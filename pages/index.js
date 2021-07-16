@@ -1,7 +1,9 @@
+import React, { useEffect, useState } from 'react';
 import MainGrid from '../src/components/MainGrid';
 import Box from '../src/components/Box'
 import { AlurakutMenu, OrkutNostalgicIconSet } from '../src/lib/AlurakutCommons'
 import { ProfileRelationsBoxWrapper } from '../src/components/ProfileRelations';
+import { apiGit } from '../src/services';
 
 function ProfileSideBar(props) {
   return (
@@ -12,8 +14,21 @@ function ProfileSideBar(props) {
 }
 
 export default function Home() {
+  const [seguidores, setSeguidores] = useState([]);
   const githubUser = 'anajur'
   const pessoasFavoritas = ['juunegreiros', 'peas', 'omariosouto']
+
+  async function obterSeguidores() {
+    const response = await apiGit.get(`/users/anajur/followers`);
+    setSeguidores(response.data.slice(1, 7));
+  }
+
+  const totalSeguidores = seguidores.length > 0 ? seguidores.length : 0
+
+  useEffect(() => {
+    obterSeguidores();
+  });
+
   return (
     <>
       <AlurakutMenu />
@@ -26,7 +41,7 @@ export default function Home() {
             <h1 className="title">
               Bem vindo(a)
             </h1>
-            <OrkutNostalgicIconSet/>
+            <OrkutNostalgicIconSet />
           </Box>
         </div>
         <div className="profileRelationsArea" style={{ gridArea: 'profileRelationsArea' }}>
@@ -45,6 +60,26 @@ export default function Home() {
                   </li>
                 )
               })}
+            </ul>
+          </ProfileRelationsBoxWrapper>
+          <ProfileRelationsBoxWrapper >
+            <h2 className="smallTitle">
+              Seguidores ({totalSeguidores})
+            </h2>
+            <ul>
+              {seguidores ?
+                seguidores.map((item) => {
+                  return (
+                    <li>
+                      <a href={`/users/${item.login}`} key={item.login}>
+                        <img src={`${item.avatar_url}`} />
+                        <span>{item.login}</span>
+                      </a>
+                    </li>
+                  )
+                })
+                : <> </>
+              }
             </ul>
           </ProfileRelationsBoxWrapper>
         </div>
