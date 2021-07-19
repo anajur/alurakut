@@ -3,7 +3,38 @@ import MainGrid from '../src/components/MainGrid';
 import Box from '../src/components/Box'
 import { AlurakutMenu, AlurakutProfileSidebarMenuDefault, OrkutNostalgicIconSet } from '../src/lib/AlurakutCommons'
 import { ProfileRelationsBoxWrapper } from '../src/components/ProfileRelations';
-import { apiGit } from '../src/services';
+import { apiGit, apiGraphql, api } from '../src/services';
+import nookies from 'nookies';
+import { apiAlura } from '../src/services';
+import jwt from 'jsonwebtoken';
+import Head from 'next/head'
+
+
+function ProfileRelationsBox(props) {
+  const { list, title } = props;
+  return (
+    <ProfileRelationsBoxWrapper >
+      <h2 className="smallTitle">
+        {title} ({list.length})
+      </h2>
+      <ul>
+        {
+          list.map((item) => {
+            return (
+              <li id={item.id}>
+                <a href={`/users/${item}`} >
+                  <img src={`https://github.com/${item}.png`} />
+                  <span>{item}</span>
+                </a>
+              </li>
+            )
+          })
+        }
+      </ul>
+    </ProfileRelationsBoxWrapper>
+  )
+
+}
 
 function ProfileSideBar(props) {
   return (
@@ -21,31 +52,41 @@ function ProfileSideBar(props) {
   )
 }
 
-export default function Home() {
+export default function Home(props) {
   const [seguidores, setSeguidores] = useState([]);
-  const [comunidades, setComunidades] = useState([{
-    id: '3687273737327732',
-    title: 'Eu odeio acordar cedo',
-    image: 'https://alurakut.vercel.app/capa-comunidade-01.jpg'
-  }]);
+  const [comunidades, setComunidades] = useState([]);
 
-  const githubUser = 'anajur'
-  const pessoasFavoritas = ['juunegreiros', 'peas', 'omariosouto']
-
-  async function obterSeguidores() {
-    const response = await apiGit.get(`/users/anajur/followers`);
-    setSeguidores(response.data.slice(1, 7));
-  }
+  const githubUser = props.githubUser;
 
   const totalSeguidores = seguidores.length > 0 ? seguidores.length : 0
 
   useEffect(() => {
-    obterSeguidores();
-  });
+    apiGit.get(`/users/anajur/followers`)
+      .then(response => setSeguidores(response.data));
+
+    apiGraphql.post('/',
+      JSON.stringify({
+        "query": ` query {
+    allCommunities {
+      title
+      id
+      imageUrl
+      creatorSlug
+    }
+   }` })
+    ).then(response => setComunidades(response.data.data.allCommunities));
+
+
+  }, [])
 
   return (
     <>
       <AlurakutMenu githubUser={githubUser} />
+      <Head>
+        <title>Alurakut - Home</title>
+        <meta name="viewport" content="initial-scale=1.0, width=device-width" />
+        <link rel="shortcut icon" href="https://cdn.icon-icons.com/icons2/122/PNG/512/orkut_socialnetwork_20026.png" />
+      </Head>
       <MainGrid>
         <div className="profileArea" style={{ gridArea: 'profileArea' }}>
           <ProfileSideBar githubUser={githubUser} />
@@ -67,10 +108,18 @@ export default function Home() {
               const comunidade = {
                 id: new Date().toISOString,
                 title: dadosDoForm.get('title'),
-                image: dadosDoForm.get('image')
+                imageUrl: dadosDoForm.get('image'),
+                creatorSlug: githubUser
               }
+              async function salvar() {
+                const response = await api.post('', comunidade).then(response => {
+                  const comunidadesAtualizadas = [...comunidades, comunidade];
+                  setComunidades(comunidadesAtualizadas)
+                })
 
-              setComunidades([...comunidades, comunidade]);
+              }
+              salvar();
+
             }}>
               <div>
 
@@ -98,24 +147,7 @@ export default function Home() {
         <div className="profileRelationsArea" style={{ gridArea: 'profileRelationsArea' }}>
           <ProfileRelationsBoxWrapper >
             <h2 className="smallTitle">
-              Pessoas da comunidade ({pessoasFavoritas.length})
-            </h2>
-            <ul>
-              {pessoasFavoritas.map((item) => {
-                return (
-                  <li key={item}>
-                    <a href={`/users/${item}`} >
-                      <img src={`https://github.com/${item}.png`} />
-                      <span>{item}</span>
-                    </a>
-                  </li>
-                )
-              })}
-            </ul>
-          </ProfileRelationsBoxWrapper>
-          <ProfileRelationsBoxWrapper >
-            <h2 className="smallTitle">
-              Comunidades ({comunidades.length})
+              minhas comunidades ({comunidades.length})
             </h2>
             <ul>
               {comunidades ?
@@ -123,7 +155,7 @@ export default function Home() {
                   return (
                     <li id={item.id}>
                       <a href={`/users/${item.title}`} key={item.title}>
-                        <img src={item.image} />
+                        <img src={item.imageUrl} />
                         <span>{item.title}</span>
                       </a>
                     </li>
@@ -135,11 +167,11 @@ export default function Home() {
           </ProfileRelationsBoxWrapper>
           <ProfileRelationsBoxWrapper >
             <h2 className="smallTitle">
-              Seguidores ({totalSeguidores})
+              meus amigos ({totalSeguidores})
             </h2>
             <ul>
               {seguidores ?
-                seguidores.map((item) => {
+                seguidores.slice(1, 7).map((item) => {
                   return (
                     <li key={item.login}>
                       <a href={`/users/${item.login}`}>
@@ -157,4 +189,30 @@ export default function Home() {
       </MainGrid>
     </>
   )
+}
+
+export async function getServerSideProps(context) {
+  const cookies = nookies.get(context)
+  const token = cookies.USER_TOKEN;
+  const response = await apiAlura.post('/api/auth', '', {
+    headers: {
+      Authorization: token
+    }
+  })
+  const isAuthenticated = response.data.isAuthenticated;
+  if (!isAuthenticated) {
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      }
+    }
+  }
+
+  const { githubUser } = jwt.decode(token);
+  return {
+    props: {
+      githubUser
+    },
+  }
 }
