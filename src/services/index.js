@@ -12,12 +12,19 @@ export const apiGraphql = axios.create({
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'Authorization': BASIC_TOKEN,
-      }
+    }
 })
 
 export const api = axios.create({
     baseURL: '/api/comunidades',
     headers: {
         'Content-Type': 'application/json'
-      }
+    }
+})
+
+export const apiAlura = axios.create({
+    baseURL: 'https://alurakut.vercel.app',
+    headers: {
+        'Content-Type': 'application/json'
+    }
 })
