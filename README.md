@@ -4,7 +4,7 @@
 📌 Projeto desenvolvido na imersão de React da Alura
 
 ## Tecnologias  🛠 
-- React Native
+- React
 - NextJS
 - Styled Components
 - GranphQL
